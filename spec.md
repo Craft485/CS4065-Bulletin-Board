@@ -13,10 +13,10 @@
 
 ### Protocol and server architecture
 
-- [ ] Design and document a client-server protocol (plain text, XML, or JSON) with a format both sides can parse
-- [ ] Use one thread per TCP connection (similar to the Project 1 multithreaded web server)
+- [x] Design and document a client-server protocol (plain text, XML, or JSON) with a format both sides can parse
+- [x] Use one thread per TCP connection (similar to the Project 1 multithreaded web server)
 - [ ] Keep each TCP connection open until the client leaves the group and disconnects from the server
-- [ ] Listen on a non-system port (above 1023)
+- [x] Listen on a non-system port (above 1023)
 
 ### Documentation (15%)
 
@@ -31,7 +31,7 @@
 
 ### Server
 
-- [ ] Run as a standalone process that listens endlessly on a fixed port
+- [x] Run as a standalone process that listens endlessly on a fixed port
 - [ ] Treat all clients as members of one public group
 - [ ] Prompt each joining client for a user name and reject names already in use (no authentication required)
 - [ ] Track users as they join and leave the group
