@@ -10,4 +10,4 @@ Each "packet" will begin with the command the client wants to send. From this, t
 
 Different fields within a packet will be separated with a single newline character.
 
-The end of a packer will be represented with two subsequent newline characters.
+The end of a packet will be represented with two subsequent newline characters.

@@ -7,8 +7,8 @@
 - [ ] Implement a client and a standalone server, using Java, Python, and/or C/C++
 - [ ] Use only raw sockets for networking, with no other built-in or third-party networking libraries
 - [ ] Use unicast sockets only (the server tracks all connected client sockets)
-- [ ] *(Optional, about +5%)* Write the client and server in different languages
-- [ ] *(Optional, up to +5%)* Build a GUI client
+- [ ] _(Optional, about +5%)_ Write the client and server in different languages
+- [ ] _(Optional, up to +5%)_ Build a GUI client
 - [ ] Submit one common codebase in which Parts 1 and 2 work together in the same process run. Users must be able to switch between the two parts without disconnecting from the server.
 
 ### Protocol and server architecture
@@ -46,13 +46,13 @@
 
 ### Client
 
-- [ ] `%connect <address> <port>`: connect to a running server
+- [x] `%connect <address> <port>`: connect to a running server
 - [ ] `%join`: join the public board
 - [ ] `%post <subject> <content>`: post a message
 - [ ] `%users`: list users in the group
 - [ ] `%message <id>`: retrieve a message's content
 - [ ] `%leave`: leave the group
-- [ ] `%exit`: disconnect from the server and quit the client
+- [x] `%exit`: disconnect from the server and quit the client
 - [ ] Display incoming notifications and posts from other users as they arrive
 - [ ] Handle invalid input and errors gracefully (bad ID, duplicate name, not connected, and so on)
 
@@ -80,8 +80,8 @@
 
 ## Grading Map (50 points)
 
-| Category | Weight | Covered by |
-| --- | --- | --- |
-| Functionality | 70% (40% Part 1, 30% Part 2) | Part 1 and Part 2 sections |
-| Usability | 15% | Command sets, error handling, optional GUI |
-| Documentation | 15% | Preamble: code comments, README, Makefile |
+| Category      | Weight                       | Covered by                                 |
+| ------------- | ---------------------------- | ------------------------------------------ |
+| Functionality | 70% (40% Part 1, 30% Part 2) | Part 1 and Part 2 sections                 |
+| Usability     | 15%                          | Command sets, error handling, optional GUI |
+| Documentation | 15%                          | Preamble: code comments, README, Makefile  |
