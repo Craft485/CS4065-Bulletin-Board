@@ -94,7 +94,7 @@ class Client:
         print("Run: %connect <address> <port> to begin.")
 
         while True:
-            user_input = input().strip()
+            user_input = input("> ").strip()
 
             # Ignore empty user input.
             if not user_input:
