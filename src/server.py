@@ -1,8 +1,115 @@
 import socket, threading, argparse
 
-# TODO: Implement client-to-server communication
+
+from datetime import datetime
+from protocol import build_packet, read_packet
+
+users = {}
+messages = []
+next_message_id = 1
+lock = threading.Lock()
+
+
+def send_packet(client_socket, command, *fields):
+  try:
+    client_socket.sendall(build_packet(command, *fields).encode())
+  except OSError:
+    pass
+
+
+def broadcast(command, *fields, exclude=None):
+  with lock:
+    clients = [client for client in users.values() if client is not exclude]
+  for client in clients:
+    send_packet(client, command, *fields)
+
 def handle_client_connection(client_socket: socket.socket):
   print(f"Handling client connection for {client_socket.getsockname()}")
+
+
+  # Create a file-like object for reading from the socket
+  reader = client_socket.makefile("r")
+  username = None
+
+  # Handle incoming packets from the client
+  try:
+    while True:
+      packet = read_packet(reader) # keep reading packets from the client until the connection is closed or an error occurs
+      if packet is None:
+        break
+
+      #a packet is a tuple of (command, fields) where command is a string and fields is a list of strings
+      command, fields = packet 
+
+      # if the command is JOIN and the username is not already taken, add the user to the users 
+      # dictionary and send them the list of users and recent messages
+      if command == "JOIN" and fields: 
+        username = fields[0]
+
+
+        # this is to ensure that the users dictionary is not modified by another thread 
+        # while we are checking if the username is already taken
+        with lock: 
+          if username in users:
+            username = None
+            send_packet(client_socket, "ERROR", "Name already in use")
+            continue
+          users[username] = client_socket
+          user_list = list(users)
+
+          #display the last two messages to the user who just joined
+          recent_messages = messages[-2:]
+
+      # send the user the list of users and recent messages, and broadcast to all other users
+      #  that a new user has joined
+        send_packet(client_socket, "USER_LIST", *user_list)
+        for message in recent_messages:
+          send_packet(client_socket, "MESSAGE_SUMMARY", *message[:4])
+        broadcast("USER_JOINED", username, exclude=client_socket)
+
+      # if the command is POST and the user has joined, add the message to the messages
+      # list and broadcast it to all users
+      elif command == "POST" and username and len(fields) >= 2:
+        global next_message_id
+        message = [
+          str(next_message_id), username,
+          datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          fields[0], "\n".join(fields[1:])
+        ]
+        with lock:
+          next_message_id += 1
+          messages.append(message)
+        broadcast("POST", *message)
+
+      elif command == "USERS":
+        with lock:
+          send_packet(client_socket, "USER_LIST", *users.keys())
+
+      # if the command is MESSAGE and the user has joined (or online), 
+      # send the message content to the user
+      elif command == "MESSAGE" and fields:
+        with lock:
+          message = next((item for item in messages if item[0] == fields[0]), None)
+        if message:
+          send_packet(client_socket, "MESSAGE_CONTENT", *message)
+        else:
+          send_packet(client_socket, "ERROR", "Message not found")
+
+
+      # if the command is LEAVE, send a GOODBYE packet to the client and 
+      # break the loop to close the connection
+      elif command == "LEAVE":
+        send_packet(client_socket, "GOODBYE")
+        break
+      else:
+        send_packet(client_socket, "ERROR", "Invalid command or arguments")
+  finally:
+    if username:
+      with lock:
+        users.pop(username, None)
+      broadcast("USER_LEFT", username)
+    reader.close()
+    client_socket.close()
 
 def main():
   # Grab optional command line argument for the port for the server to listen on

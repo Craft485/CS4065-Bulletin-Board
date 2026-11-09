@@ -34,10 +34,15 @@ class Client:
         print(f"Connected to {address}:{port}")
         self.sock_reader = self.sock.makefile("r")
 
-        # TODO: Create thread for receiving packets
-        # Client has to wait for user input or reading a packet, both of these 
-        # can block the other so this additional thread allows both.
-        # "Display incoming notifications and posts from other users as they arrive"
+        threading.Thread(target=self.receive_messages, daemon=True).start()
+
+    def receive_messages(self):
+        while self.sock_reader:
+            packet = read_packet(self.sock_reader)
+            if packet is None:
+                break
+            command, fields = packet
+            print(f"[{command}] {' | '.join(fields)}")
 
     def close(self):
         """
@@ -108,15 +113,25 @@ class Client:
             if command == "%connect":
                 self.cmd_connect(args)
             elif command == "%join":
-                pass
+                if args:
+                    self.send("JOIN", args)
+                else:
+                    print("Usage: %join <username>")
             elif command == "%post":
-                pass
+                subject, separator, content = args.partition(" ")
+                if separator and content:
+                    self.send("POST", subject, content)
+                else:
+                    print("Usage: %post <subject> <content>")
             elif command == "%message":
-                pass
+                if args:
+                    self.send("MESSAGE", args)
+                else:
+                    print("Usage: %message <id>")
             elif command == "%users":
-                pass
+                self.send("USERS")
             elif command == "%leave":
-                pass
+                self.send("LEAVE")
             elif command == "%exit":
                 # Exit the loop, socket will then close.
                 break
