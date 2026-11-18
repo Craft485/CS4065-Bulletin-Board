@@ -10,11 +10,12 @@ from protocol import build_packet, read_packet
 class BulletinBoardGui:
     def __init__(self, root):
         self.root = root
-        self.root.title("Bulletin Board Test Client")
-        self.root.geometry("700x500")
+        self.root.title("Bulletin Board")
+        self.root.geometry("700x520")
 
+
+        #initialize empty and placeholder variables
         self.sock = None
-        self.reader = None
         self.generation = 0
         self.join_pending = False
         self.joined = False
@@ -22,60 +23,62 @@ class BulletinBoardGui:
         self.events = queue.Queue()
         self.users = []
         self.messages = {}
+        self.message_order = []
 
+        #build the user interface and set up event handling 
         self._build_ui()
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close) #if the command is closed, call the _on_close method to clean up resources
         self.root.after(100, self._process_events)
+        self.username_entry.focus_set() # set the focus to the username entry field when the application just open up
 
     def _build_ui(self):
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        self.login_frame = ttk.Frame(self.root, padding=24)
+        self.login_frame.pack(fill="both", expand=True)
+        ttk.Label(
+            self.login_frame, text="Welcome to the Bulletin Board", font=("", 16, "bold")
+        ).pack(pady=(50, 12))
+        ttk.Label(self.login_frame, text="Enter a unique username to join:").pack(pady=4)
+        self.username_var = tk.StringVar()
+        self.username_entry = ttk.Entry(self.login_frame, textvariable=self.username_var, width=32)
+        self.username_entry.pack(pady=6)
+        self.username_entry.bind("<Return>", lambda _event: self.join())
+        self.join_button = ttk.Button(self.login_frame, text="Join", command=self.join)
+        self.join_button.pack(pady=8)
+        self.login_status_var = tk.StringVar(value="Make sure the server is running on port 3001.")
+        ttk.Label(self.login_frame, textvariable=self.login_status_var).pack(pady=6)
 
-        self.connection_tab = ttk.Frame(self.notebook, padding=12)
-        self.post_tab = ttk.Frame(self.notebook, padding=12)
+        self.main_frame = ttk.Frame(self.root, padding=10)
+        header = ttk.Frame(self.main_frame)
+        header.pack(fill="x", pady=(0, 8))
+        self.status_var = tk.StringVar(value="")
+        ttk.Label(header, textvariable=self.status_var).pack(side="left", fill="x", expand=True)
+        ttk.Button(header, text="Leave board", command=self.leave).pack(side="right")
+
+        self.notebook = ttk.Notebook(self.main_frame)
+        self.notebook.pack(fill="both", expand=True)
         self.users_tab = ttk.Frame(self.notebook, padding=12)
         self.messages_tab = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.connection_tab, text="Connect / Join")
-        self.notebook.add(self.post_tab, text="Post")
-        self.notebook.add(self.users_tab, text="Users")
-        self.notebook.add(self.messages_tab, text="Messages")
+        self.post_tab = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.users_tab, text="Online Users")
+        self.notebook.add(self.messages_tab, text="Messages Dashboard")
+        self.notebook.add(self.post_tab, text="New Post")
 
-        self.address_var = tk.StringVar(value="127.0.0.1")
-        self.port_var = tk.StringVar(value="3001")
-        self.username_var = tk.StringVar()
-        self.status_var = tk.StringVar(value="Disconnected")
+        ttk.Button(self.users_tab, text="Refresh users", command=self.request_users).pack(
+            anchor="w"
+        )
+        self.user_list = tk.Listbox(self.users_tab)
+        self.user_list.pack(fill="both", expand=True, pady=(8, 0))
 
-        ttk.Label(self.connection_tab, text="Server address").grid(row=0, column=0, sticky="w", pady=4)
-        ttk.Entry(self.connection_tab, textvariable=self.address_var, width=30).grid(
-            row=0, column=1, sticky="ew", pady=4
+        ttk.Label(self.messages_tab, text="Select a post to view its full message:").pack(
+            anchor="w"
         )
-        ttk.Label(self.connection_tab, text="Port").grid(row=1, column=0, sticky="w", pady=4)
-        ttk.Entry(self.connection_tab, textvariable=self.port_var, width=12).grid(
-            row=1, column=1, sticky="w", pady=4
+        self.message_list = tk.Listbox(self.messages_tab, height=10)
+        self.message_list.pack(fill="both", expand=True, pady=(6, 8))
+        self.message_list.bind("<<ListboxSelect>>", self._select_message)
+        self.message_content = tk.Text(
+            self.messages_tab, height=8, wrap="word", state="disabled"
         )
-        ttk.Button(self.connection_tab, text="Connect", command=self.connect).grid(
-            row=2, column=1, sticky="w", pady=6
-        )
-        ttk.Label(self.connection_tab, text="Username").grid(row=3, column=0, sticky="w", pady=4)
-        ttk.Entry(self.connection_tab, textvariable=self.username_var, width=30).grid(
-            row=3, column=1, sticky="ew", pady=4
-        )
-        ttk.Button(self.connection_tab, text="Join public board", command=self.join).grid(
-            row=4, column=1, sticky="w", pady=6
-        )
-        ttk.Button(self.connection_tab, text="Leave / disconnect", command=self.leave).grid(
-            row=5, column=1, sticky="w", pady=4
-        )
-        ttk.Label(self.connection_tab, textvariable=self.status_var).grid(
-            row=6, column=0, columnspan=2, sticky="w", pady=(12, 4)
-        )
-        ttk.Label(self.connection_tab, text="Activity").grid(
-            row=7, column=0, columnspan=2, sticky="w", pady=(12, 4)
-        )
-        self.activity = tk.Listbox(self.connection_tab, height=10)
-        self.activity.grid(row=8, column=0, columnspan=2, sticky="nsew")
-        self.connection_tab.columnconfigure(1, weight=1)
-        self.connection_tab.rowconfigure(8, weight=1)
+        self.message_content.pack(fill="x")
 
         ttk.Label(self.post_tab, text="Subject").grid(row=0, column=0, sticky="w", pady=4)
         self.subject_entry = ttk.Entry(self.post_tab)
@@ -88,59 +91,55 @@ class BulletinBoardGui:
         )
         self.post_tab.columnconfigure(1, weight=1)
 
-        ttk.Button(self.users_tab, text="Refresh users", command=self.request_users).pack(anchor="w")
-        self.user_list = tk.Listbox(self.users_tab)
-        self.user_list.pack(fill="both", expand=True, pady=(8, 0))
+    def join(self): 
+        # join method is called when the user clicks the "Join" button or presses Enter
+        # in the username entry field. It retrieves the username from the entry field,
+        # checks if it's valid, and attempts to connect to the server. If successful,
+        #  it sends a JOIN command to the server with the username. If any step fails, it
+        #  updates the login status with an appropriate message.
 
-        ttk.Label(
-            self.messages_tab,
-            text="Recent messages and new posts (select one to fill its ID below)",
-        ).pack(anchor="w")
-        self.message_list = tk.Listbox(self.messages_tab, height=10)
-        self.message_list.pack(fill="both", expand=True, pady=(6, 8))
-        self.message_list.bind("<<ListboxSelect>>", self._select_message)
-        lookup_row = ttk.Frame(self.messages_tab)
-        lookup_row.pack(fill="x")
-        ttk.Label(lookup_row, text="Message ID").pack(side="left")
-        self.message_id_var = tk.StringVar()
-        ttk.Entry(lookup_row, textvariable=self.message_id_var, width=12).pack(
-            side="left", padx=6
-        )
-        ttk.Button(lookup_row, text="Get full message", command=self.get_message).pack(side="left")
-        self.message_content = tk.Text(self.messages_tab, height=6, wrap="word", state="disabled")
-        self.message_content.pack(fill="x", pady=(8, 0))
 
-    def _log(self, text):
-        self.activity.insert("end", text)
-        self.activity.see("end")
-
-    def connect(self):
-        if self.sock is not None:
-            messagebox.showinfo("Already connected", "Disconnect before connecting again.")
+        username = self.username_var.get().strip()
+        if not username:
+            self.login_status_var.set("Please enter a username.")
+            return
+        if self.join_pending or self.joined:
             return
 
-        try:
-            port = int(self.port_var.get())
-            sock = socket.create_connection((self.address_var.get().strip(), port), timeout=5)
+        if self.sock is None and not self._connect():
+            return
+        self.username = username
+        self.join_pending = True
+        self.join_button.configure(state="disabled")
+        self.login_status_var.set(f"Joining as {username}...")
+        if not self._send("JOIN", username):
+            self.join_pending = False
+            self.join_button.configure(state="normal")
+
+    def _connect(self):
+        #connect method attempts to establish a connection to the server, if it is not
+        #online, display error message and return False.   
+        try: 
+            sock = socket.create_connection(("127.0.0.1", 3001), timeout=5)
             sock.settimeout(None)
             reader = sock.makefile("r")
-        except (OSError, ValueError) as error:
-            messagebox.showerror("Connection failed", str(error))
-            return
+        except OSError as error:
+            self.login_status_var.set(f"Could not connect to the server: {error}")
+            return False
 
+
+        # If the connection is successful, it increments the generation counter, stores the socket,
         self.generation += 1
         generation = self.generation
         self.sock = sock
-        self.reader = reader
-        self.join_pending = False
-        self.joined = False
-        self.status_var.set(f"Connected to {self.address_var.get()}:{port}")
-        self._log(f"Connected to {self.address_var.get()}:{port}")
         threading.Thread(
-            target=self._receive_packets, args=(sock, reader, generation), daemon=True
+            target=self._receive_packets, args=(reader, generation), daemon=True
         ).start()
+        return True
 
-    def _receive_packets(self, sock, reader, generation):
+
+    #receive_packets method runs in a separate thread and continuously reads packets from the server.
+    def _receive_packets(self, reader, generation):
         try:
             while True:
                 packet = read_packet(reader)
@@ -156,66 +155,41 @@ class BulletinBoardGui:
                 pass
             self.events.put((generation, "closed", None))
 
+
+    #send method sends a packet to the server with the specified command and fields. If the socket is None, it returns False. 
+    # If sending fails due to an OSError, it shows an error message, disconnects, 
+    # and returns to the login screen.
+
+
     def _send(self, command, *fields):
         if self.sock is None:
-            messagebox.showwarning("Not connected", "Connect to a server first.")
             return False
         try:
             self.sock.sendall(build_packet(command, *fields).encode())
             return True
         except OSError as error:
-            self._log(f"Send failed: {error}")
+            self._show_message(f"Connection failed: {error}")
             self._disconnect()
+            self._return_to_login()
             return False
 
-    def join(self):
-        username = self.username_var.get().strip()
-        if not username:
-            messagebox.showwarning("Username required", "Enter a username before joining.")
-            return
-        if self.joined or self.join_pending:
-            return
-        if self._send("JOIN", username):
-            self.username = username
-            self.join_pending = True
-            self.status_var.set(f"Joining as {username}...")
-
     def leave(self):
-        if self.sock is None:
-            return
         if self.joined:
-            self._send("LEAVE")
             self.status_var.set("Leaving the board...")
-        else:
-            self._disconnect()
+            self._send("LEAVE")
 
     def post(self):
         subject = self.subject_entry.get().strip()
         content = self.content_entry.get().strip()
         if not subject or not content:
+            #display a warning message if either the subject or content is missing
             messagebox.showwarning("Missing message", "Enter both a subject and message.")
             return
-        if self.joined and self._send("POST", subject, content):
+        if self._send("POST", subject, content):
             self.content_entry.delete(0, "end")
-            self._log("Post sent.")
-        elif not self.joined:
-            messagebox.showwarning("Not joined", "Join the board before posting.")
 
     def request_users(self):
-        if not self.joined:
-            messagebox.showwarning("Not joined", "Join the board before requesting users.")
-            return
         self._send("USERS")
-
-    def get_message(self):
-        message_id = self.message_id_var.get().strip()
-        if not message_id:
-            messagebox.showwarning("Message ID required", "Enter a message ID.")
-            return
-        if not self.joined:
-            messagebox.showwarning("Not joined", "Join the board before requesting messages.")
-            return
-        self._send("MESSAGE", message_id)
 
     def _process_events(self):
         while True:
@@ -228,9 +202,10 @@ class BulletinBoardGui:
             if event_type == "packet":
                 self._handle_packet(*data)
             elif event_type == "error":
-                self._log(f"Connection error: {data}")
+                self._show_message(f"Connection error: {data}")
             elif event_type == "closed":
                 self._disconnect()
+                self._return_to_login("Disconnected from the server. Enter a username to rejoin.")
         self.root.after(100, self._process_events)
 
     def _handle_packet(self, command, fields):
@@ -240,63 +215,94 @@ class BulletinBoardGui:
             if self.join_pending:
                 self.join_pending = False
                 self.joined = True
-                self.status_var.set(f"Joined as {self.username}")
-                self._log(f"Joined the board as {self.username}.")
+                self.login_frame.pack_forget()
+                self.main_frame.pack(fill="both", expand=True)
+                self.status_var.set(f"Online as {self.username}")
         elif command in ("MESSAGE_SUMMARY", "POST"):
             self._add_message(fields)
-            if command == "POST" and len(fields) >= 5:
-                self._log(f"New post from {fields[1]}: {fields[3]}")
         elif command == "MESSAGE_CONTENT":
             if len(fields) >= 5:
                 details = (
                     f"ID: {fields[0]}\nSender: {fields[1]}\n"
                     f"Date: {fields[2]}\nSubject: {fields[3]}\n\n{fields[4]}"
                 )
-                self.message_content.configure(state="normal")
-                self.message_content.delete("1.0", "end")
-                self.message_content.insert("1.0", details)
-                self.message_content.configure(state="disabled")
-        elif command in ("USER_JOINED", "USER_LEFT"):
-            if fields:
-                action = "joined" if command == "USER_JOINED" else "left"
-                self._log(f"{fields[0]} {action} the board.")
+                self._set_message_content(details)
+        elif command == "USER_JOINED" and fields:
+            if fields[0] not in self.users:
+                self.users.append(fields[0])
+                self._refresh_users()
+        elif command == "USER_LEFT" and fields:
+            if fields[0] in self.users:
+                self.users.remove(fields[0])
+                self._refresh_users()
         elif command == "ERROR":
-            self.join_pending = False
-            self._log("Server error: " + " | ".join(fields))
-            if not self.joined:
-                self.status_var.set("Connected; join was not completed.")
+            error = "Server error: " + " | ".join(fields)
+            if self.join_pending:
+                self.join_pending = False
+                self.join_button.configure(state="normal")
+                self.login_status_var.set(error)
+            else:
+                self._show_message(error)
         elif command == "GOODBYE":
-            self._log("Server confirmed that you left.")
             self._disconnect()
-        else:
-            self._log(f"[{command}] {' | '.join(fields)}")
+            self._return_to_login("You left the board. Enter a username to rejoin.")
+
+
+    # adds a new message to the messages dictionary (message_id: (sender, posted_at, subject))
+    # and updates the message_order list to maintain the order of messages.
 
     def _add_message(self, fields):
         if len(fields) < 4:
             return
         message_id, sender, posted_at, subject = fields[:4]
+        if message_id not in self.messages:
+            self.message_order.append(message_id)
         self.messages[message_id] = (sender, posted_at, subject)
+        selected_id = self._selected_message_id()
         self.message_list.delete(0, "end")
-        for current_id, (current_sender, current_date, current_subject) in self.messages.items():
+        for current_id in self.message_order:
+            current_sender, current_date, current_subject = self.messages[current_id]
             self.message_list.insert(
                 "end", f"{current_id}, {current_sender}, {current_date}, {current_subject}"
             )
+        if selected_id in self.message_order:
+            self.message_list.selection_set(self.message_order.index(selected_id))
+
+
+    # if click on a message in the list, it retrieves the selected message ID and
+    #  sends a MESSAGE command to the server to request the full content of that message.
+    def _selected_message_id(self):
+        selection = self.message_list.curselection()
+        if selection and selection[0] < len(self.message_order):
+            return self.message_order[selection[0]]
+        return None
 
     def _select_message(self, _event):
-        selection = self.message_list.curselection()
-        if selection:
-            item = self.message_list.get(selection[0])
-            self.message_id_var.set(item.split(",", 1)[0])
+        message_id = self._selected_message_id()
+        if message_id:
+            self._set_message_content("Loading message...")
+            self._send("MESSAGE", message_id)
+
+    def _set_message_content(self, text):
+        self.message_content.configure(state="normal")
+        self.message_content.delete("1.0", "end")
+        self.message_content.insert("1.0", text)
+        self.message_content.configure(state="disabled")
 
     def _refresh_users(self):
         self.user_list.delete(0, "end")
         for username in self.users:
             self.user_list.insert("end", username)
 
+    def _show_message(self, text):
+        if self.joined:
+            self.status_var.set(text)
+        else:
+            self.login_status_var.set(text)
+
     def _disconnect(self):
         sock = self.sock
         self.sock = None
-        self.reader = None
         self.join_pending = False
         self.joined = False
         self.username = ""
@@ -310,7 +316,15 @@ class BulletinBoardGui:
                 sock.close()
             except OSError:
                 pass
-        self.status_var.set("Disconnected")
+
+    def _return_to_login(self, message=None):
+        self.main_frame.pack_forget()
+        self.login_frame.pack(fill="both", expand=True)
+        self.join_button.configure(state="normal")
+        self.username_var.set("")
+        if message:
+            self.login_status_var.set(message)
+        self.username_entry.focus_set()
 
     def _on_close(self):
         if self.sock is not None and self.joined:
