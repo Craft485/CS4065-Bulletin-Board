@@ -71,12 +71,12 @@ def handle_client_connection(client_socket: socket.socket):
       # list and broadcast it to all users
       elif command == "POST" and username and len(fields) >= 2:
         global next_message_id
-        message = [
-          str(next_message_id), username,
-          datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-          fields[0], "\n".join(fields[1:])
-        ]
         with lock:
+          message = [
+            str(next_message_id), username,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            fields[0], "\n".join(fields[1:])
+          ]
           next_message_id += 1
           messages.append(message)
         broadcast("POST", *message)
