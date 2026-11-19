@@ -44,16 +44,20 @@ def handle_client_connection(client_socket: socket.socket):
       # if the command is JOIN and the username is not already taken, add the user to the users 
       # dictionary and send them the list of users and recent messages
       if command == "JOIN" and fields: 
-        username = fields[0]
+        requested_username = fields[0]
 
+        # A connection can join the public board only once
+        if username is not None:
+          send_packet(client_socket, "ERROR", "Already joined")
+          continue
 
         # this is to ensure that the users dictionary is not modified by another thread 
         # while we are checking if the username is already taken
         with lock: 
-          if username in users:
-            username = None
+          if requested_username in users:
             send_packet(client_socket, "ERROR", "Name already in use")
             continue
+          username = requested_username
           users[username] = client_socket
           user_list = list(users)
 
