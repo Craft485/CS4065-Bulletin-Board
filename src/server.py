@@ -79,7 +79,7 @@ def handle_client_connection(client_socket: socket.socket):
           ]
           next_message_id += 1
           messages.append(message)
-        broadcast("POST", *message)
+        broadcast("POST", *message[:4])
 
       elif command == "USERS":
         with lock:
