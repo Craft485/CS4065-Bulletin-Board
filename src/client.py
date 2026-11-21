@@ -42,7 +42,7 @@ class Client:
             if packet is None:
                 break
             command, fields = packet
-            print(f"[{command}] {' | '.join(fields)}")
+            print(f"[{command}] {', '.join(fields)}")
 
     def close(self):
         """
