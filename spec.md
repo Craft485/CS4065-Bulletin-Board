@@ -32,29 +32,29 @@
 ### Server
 
 - [x] Run as a standalone process that listens endlessly on a fixed port
-- [ ] Treat all clients as members of one public group
-- [ ] Prompt each joining client for a user name and reject names already in use (no authentication required)
-- [ ] Track users as they join and leave the group
-- [ ] Notify all other connected clients when a user joins
-- [ ] Notify all other connected clients when a user leaves
-- [ ] When a user joins, send them the list of users already in the group
-- [ ] When a user joins, send them only the last 2 messages posted before they joined
-- [ ] When a user posts, deliver the message to the other users in the group
-- [ ] Store messages with a unique ID, sender, post date, subject, and content
-- [ ] Display each message in the format `Message ID, Sender, Post Date, Subject` (content not included)
-- [ ] On request, return the full content of a message given its ID
+- [x] Treat all clients as members of one public group
+- [x] Prompt each joining client for a user name and reject names already in use (no authentication required)
+- [x] Track users as they join and leave the group
+- [x] Notify all other connected clients when a user joins
+- [x] Notify all other connected clients when a user leaves
+- [x] When a user joins, send them the list of users already in the group
+- [x] When a user joins, send them only the last 2 messages posted before they joined
+- [x] When a user posts, deliver the message to the other users in the group
+- [x] Store messages with a unique ID, sender, post date, subject, and content
+- [x] Display each message in the format `Message ID, Sender, Post Date, Subject` (content not included)
+- [x] On request, return the full content of a message given its ID
 
 ### Client
 
 - [x] `%connect <address> <port>`: connect to a running server
-- [ ] `%join`: join the public board
-- [ ] `%post <subject> <content>`: post a message
-- [ ] `%users`: list users in the group
-- [ ] `%message <id>`: retrieve a message's content
-- [ ] `%leave`: leave the group
+- [x] `%join`: join the public board
+- [x] `%post <subject> <content>`: post a message
+- [x] `%users`: list users in the group
+- [x] `%message <id>`: retrieve a message's content
+- [x] `%leave`: leave the group
 - [x] `%exit`: disconnect from the server and quit the client
-- [ ] Display incoming notifications and posts from other users as they arrive
-- [ ] Handle invalid input and errors gracefully (bad ID, duplicate name, not connected, and so on)
+- [x] Display incoming notifications and posts from other users as they arrive
+- [x] Handle invalid input and errors gracefully (bad ID, duplicate name, not connected, and so on)
 
 ## Part 2: Multiple Private Message Boards (30% of functionality)
 
